@@ -376,11 +376,9 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             const heatColor = densityToHeatColor(newDensity);
             drawCell(ctx, baseCell, heatColor, '#808080', 0);
           } else {
-            // Normal mode: color by image pixel or white, with transparent borders
-            const imageColor = getCellColor(baseCell, imageBounds);
-            const fillColor = imageColor || '#ffffff';
+            // Normal mode: base cells stay white (image only shows when subdivided)
             const borderColor = calculateImageBorderColor(0);
-            drawCell(ctx, baseCell, fillColor, borderColor, 0);
+            drawCell(ctx, baseCell, '#ffffff', borderColor, 0);
           }
         }
       });
