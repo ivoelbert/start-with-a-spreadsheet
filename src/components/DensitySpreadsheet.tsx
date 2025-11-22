@@ -5,11 +5,10 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Point, GridConfig, CellBounds, SubdividedCell } from '../types/spreadsheet';
+import type { Point, GridConfig, CellBounds, SubdividedCell, DensityConfig } from '../types/spreadsheet';
 import {
   calculateDistance,
   getCellCenter,
-  calculateSubdivisionLevel,
   subdivideCell,
 } from '../utils/subdivision';
 import {
@@ -20,11 +19,18 @@ import {
   drawRowHeaders,
   drawCornerHeader,
 } from '../utils/canvas';
+import {
+  updateCellDensity,
+  densityToSubdivisionLevel,
+  densityToHeatColor,
+  createDefaultDensityConfig,
+} from '../utils/density';
 
 interface DensitySpreadsheetProps {
   width?: number;
   height?: number;
   config?: Partial<GridConfig>;
+  densityConfig?: Partial<DensityConfig>;
   debugMode?: boolean;
 }
 
@@ -44,16 +50,23 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   width,
   height,
   config: configOverride = {},
+  densityConfig: densityConfigOverride = {},
   debugMode = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [cellDensities, setCellDensities] = useState<Map<string, number>>(new Map());
   const animationFrameRef = useRef<number>();
+  const lastFrameTimeRef = useRef<number>(performance.now());
 
-  // Merge default config with overrides
+  // Merge default configs with overrides
   const config: GridConfig = { ...DEFAULT_CONFIG, ...configOverride };
+  const densityConfig: DensityConfig = {
+    ...createDefaultDensityConfig(),
+    ...densityConfigOverride,
+  };
 
   // Calculate canvas size based on container
   useEffect(() => {
@@ -121,7 +134,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
     setMousePos(null);
   };
 
-  // Render loop
+  // Continuous render loop with density updates
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -137,7 +150,14 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
     canvas.style.height = `${canvasSize.height}px`;
     ctx.scale(dpr, dpr);
 
-    const render = () => {
+    const render = (currentTime: number) => {
+      // Calculate delta time in seconds
+      const deltaTime = (currentTime - lastFrameTimeRef.current) / 1000;
+      lastFrameTimeRef.current = currentTime;
+
+      // Cap delta time to prevent huge jumps (e.g., when tab is inactive)
+      const cappedDeltaTime = Math.min(deltaTime, 0.1);
+
       // Clear canvas
       clearCanvas(ctx, canvasSize.width, canvasSize.height);
 
@@ -151,26 +171,29 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
       const baseCells = getBaseCells();
 
-      // If no mouse position, just draw base grid
-      if (!mousePos) {
-        baseCells.forEach((cell) => {
-          drawCell(ctx, cell, '#ffffff', '#d0d0d0');
-        });
-        animationFrameRef.current = requestAnimationFrame(render);
-        return;
-      }
+      // Update densities and render
+      const newDensities = new Map(cellDensities);
 
-      // Process each base cell
       baseCells.forEach((baseCell) => {
-        const cellCenter = getCellCenter(baseCell);
-        const distance = calculateDistance(mousePos, cellCenter);
+        const cellKey = `${baseCell.baseX},${baseCell.baseY}`;
+        const currentDensity = newDensities.get(cellKey) || 0;
 
-        // Calculate subdivision level based on distance
-        const subdivisionLevel = calculateSubdivisionLevel({
-          distance,
-          maxRadius: config.influenceRadius,
-          maxLevel: config.maxSubdivisionLevel,
-        });
+        // Update density for this cell
+        const newDensity = updateCellDensity(
+          currentDensity,
+          baseCell,
+          mousePos,
+          cappedDeltaTime,
+          densityConfig
+        );
+
+        newDensities.set(cellKey, newDensity);
+
+        // Calculate subdivision level from density
+        const subdivisionLevel = densityToSubdivisionLevel(
+          newDensity,
+          config.maxSubdivisionLevel
+        );
 
         // Subdivide cell if needed
         if (subdivisionLevel > 0) {
@@ -179,8 +202,9 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           // Draw all subdivided cells
           subdivided.forEach((subCell) => {
             if (debugMode) {
-              // Debug mode: color by distance
-              drawCellWithDistanceColor(ctx, subCell, distance, config.influenceRadius);
+              // Debug mode: color by density (heat map)
+              const heatColor = densityToHeatColor(newDensity);
+              drawCell(ctx, subCell, heatColor, '#808080');
             } else {
               // Normal mode: white cells with light borders
               drawCell(ctx, subCell, '#ffffff', '#d0d0d0');
@@ -189,15 +213,20 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         } else {
           // No subdivision - draw base cell
           if (debugMode) {
-            drawCellWithDistanceColor(ctx, baseCell, distance, config.influenceRadius);
+            // Debug mode: color by density (heat map)
+            const heatColor = densityToHeatColor(newDensity);
+            drawCell(ctx, baseCell, heatColor, '#808080');
           } else {
             drawCell(ctx, baseCell, '#ffffff', '#d0d0d0');
           }
         }
       });
 
+      // Update state with new densities
+      setCellDensities(newDensities);
+
       // Draw mouse cursor position (debug)
-      if (debugMode) {
+      if (debugMode && mousePos) {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.beginPath();
         ctx.arc(mousePos.x, mousePos.y, 5, 0, Math.PI * 2);
@@ -207,7 +236,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(mousePos.x, mousePos.y, config.influenceRadius, 0, Math.PI * 2);
+        ctx.arc(mousePos.x, mousePos.y, densityConfig.influenceRadius, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -222,7 +251,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePos, canvasSize.width, canvasSize.height, config, debugMode]);
+  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities]);
 
   return (
     <div

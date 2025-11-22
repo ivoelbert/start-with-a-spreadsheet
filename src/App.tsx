@@ -13,6 +13,9 @@ import ms_sans_serif from "react95/dist/fonts/ms_sans_serif.woff2";
 import ms_sans_serif_bold from "react95/dist/fonts/ms_sans_serif_bold.woff2";
 import "./styles.css";
 import { DensitySpreadsheet } from "./components/DensitySpreadsheet";
+import { DensityControls } from "./components/DensityControls";
+import { createDefaultDensityConfig } from "./utils/density";
+import type { DensityConfig } from "./types/spreadsheet";
 
 const GlobalStyles = createGlobalStyle`
   ${styleReset}
@@ -35,6 +38,14 @@ const GlobalStyles = createGlobalStyle`
 
 export function App() {
   const [debugMode, setDebugMode] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [densityConfig, setDensityConfig] = useState<DensityConfig>(
+    createDefaultDensityConfig()
+  );
+
+  const handleConfigChange = (changes: Partial<DensityConfig>) => {
+    setDensityConfig((prev) => ({ ...prev, ...changes }));
+  };
 
   return (
     <div>
@@ -53,16 +64,43 @@ export function App() {
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                   <Button
                     size="sm"
+                    onClick={() => setShowControls(!showControls)}
+                    active={showControls}
+                  >
+                    Controls
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => setDebugMode(!debugMode)}
                     active={debugMode}
                   >
-                    Debug Mode
+                    Debug
                   </Button>
                 </div>
               </Toolbar>
 
-              <div className="spreadsheet-container">
-                <DensitySpreadsheet debugMode={debugMode} />
+              <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+                {showControls && (
+                  <div
+                    style={{
+                      width: '250px',
+                      padding: '10px',
+                      borderRight: '2px solid #808080',
+                      overflow: 'auto',
+                    }}
+                  >
+                    <DensityControls
+                      config={densityConfig}
+                      onChange={handleConfigChange}
+                    />
+                  </div>
+                )}
+                <div className="spreadsheet-container" style={{ flex: 1 }}>
+                  <DensitySpreadsheet
+                    debugMode={debugMode}
+                    densityConfig={densityConfig}
+                  />
+                </div>
               </div>
             </WindowContent>
           </Window>
