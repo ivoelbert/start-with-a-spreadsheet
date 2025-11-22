@@ -41,23 +41,55 @@ const HEADER_WIDTH = 45;
 const HEADER_HEIGHT = 24;
 
 export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
-  width = 2200,
-  height = 800,
+  width,
+  height,
   config: configOverride = {},
   debugMode = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const animationFrameRef = useRef<number>();
 
   // Merge default config with overrides
   const config: GridConfig = { ...DEFAULT_CONFIG, ...configOverride };
 
+  // Calculate canvas size based on container
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCanvasSize({
+          width: width || rect.width,
+          height: height || rect.height,
+        });
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [width, height]);
+
+  // Calculate how many columns/rows fit in the canvas
+  const getGridDimensions = () => {
+    const availableWidth = canvasSize.width - HEADER_WIDTH;
+    const availableHeight = canvasSize.height - HEADER_HEIGHT;
+
+    const columns = Math.ceil(availableWidth / config.baseCellWidth);
+    const rows = Math.ceil(availableHeight / config.baseCellHeight);
+
+    return { columns, rows };
+  };
+
   // Generate base grid cells (offset by headers)
   const getBaseCells = (): SubdividedCell[] => {
     const cells: SubdividedCell[] = [];
-    for (let row = 0; row < config.rows; row++) {
-      for (let col = 0; col < config.columns; col++) {
+    const { columns, rows } = getGridDimensions();
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
         cells.push({
           x: HEADER_WIDTH + col * config.baseCellWidth,
           y: HEADER_HEIGHT + row * config.baseCellHeight,
@@ -99,20 +131,23 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
     // Handle device pixel ratio for crisp rendering
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.width = canvasSize.width * dpr;
+    canvas.height = canvasSize.height * dpr;
+    canvas.style.width = `${canvasSize.width}px`;
+    canvas.style.height = `${canvasSize.height}px`;
     ctx.scale(dpr, dpr);
 
     const render = () => {
       // Clear canvas
-      clearCanvas(ctx, width, height);
+      clearCanvas(ctx, canvasSize.width, canvasSize.height);
+
+      // Get dynamic grid dimensions
+      const { columns, rows } = getGridDimensions();
 
       // Draw headers first (they stay static)
       drawCornerHeader(ctx, HEADER_WIDTH, HEADER_HEIGHT);
-      drawColumnHeaders(ctx, config.columns, config.baseCellWidth, HEADER_WIDTH, HEADER_HEIGHT);
-      drawRowHeaders(ctx, config.rows, config.baseCellHeight, HEADER_WIDTH, HEADER_HEIGHT);
+      drawColumnHeaders(ctx, columns, config.baseCellWidth, HEADER_WIDTH, HEADER_HEIGHT);
+      drawRowHeaders(ctx, rows, config.baseCellHeight, HEADER_WIDTH, HEADER_HEIGHT);
 
       const baseCells = getBaseCells();
 
@@ -187,22 +222,28 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePos, width, height, config, debugMode]);
+  }, [mousePos, canvasSize.width, canvasSize.height, config, debugMode]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+    <div
+      ref={containerRef}
       style={{
-        display: 'block',
-        border: '1px solid #000',
-        cursor: 'crosshair',
-        backgroundColor: '#ffffff',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          display: 'block',
+          cursor: 'crosshair',
+          backgroundColor: '#ffffff',
+        }}
+      />
+    </div>
   );
 };
 
