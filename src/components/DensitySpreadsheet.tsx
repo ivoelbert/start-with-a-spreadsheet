@@ -18,6 +18,7 @@ import {
   drawColumnHeaders,
   drawRowHeaders,
   drawCornerHeader,
+  calculateImageBorderColor,
 } from '../utils/canvas';
 import {
   updateCellDensity,
@@ -32,6 +33,8 @@ interface DensitySpreadsheetProps {
   config?: Partial<GridConfig>;
   densityConfig?: Partial<DensityConfig>;
   debugMode?: boolean;
+  insertedImage?: string | null;
+  imageScale?: number;
 }
 
 const DEFAULT_CONFIG: GridConfig = {
@@ -52,6 +55,8 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   config: configOverride = {},
   densityConfig: densityConfigOverride = {},
   debugMode = false,
+  insertedImage = null,
+  imageScale = 1,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +64,9 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [cellDensities, setCellDensities] = useState<Map<string, number>>(new Map());
   const [cursorVelocity, setCursorVelocity] = useState<number>(0);
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+  const imageDataRef = useRef<ImageData | null>(null);
+  const imageDimensionsRef = useRef<{ width: number; height: number } | null>(null);
   const animationFrameRef = useRef<number>();
   const lastFrameTimeRef = useRef<number>(performance.now());
   const lastMousePosRef = useRef<Point | null>(null);
@@ -70,6 +78,91 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
     ...createDefaultDensityConfig(),
     ...densityConfigOverride,
   };
+
+  // Helper function to sample pixel color from ImageData
+  const samplePixel = (imageData: ImageData, x: number, y: number): string => {
+    const { width, height, data } = imageData;
+
+    // Clamp coordinates to image bounds
+    const clampedX = Math.max(0, Math.min(Math.floor(x), width - 1));
+    const clampedY = Math.max(0, Math.min(Math.floor(y), height - 1));
+
+    // Calculate pixel index (4 bytes per pixel: RGBA)
+    const index = (clampedY * width + clampedX) * 4;
+
+    // Extract RGB values
+    const r = data[index];
+    const g = data[index + 1];
+    const b = data[index + 2];
+
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
+  // Helper function to get cell color based on image pixel at cell center
+  const getCellColor = (
+    cell: SubdividedCell,
+    imageBounds: { x: number; y: number; width: number; height: number } | null
+  ): string | null => {
+    if (!imageDataRef.current || !imageDimensionsRef.current || !imageBounds) {
+      return null;
+    }
+
+    // Calculate cell center point
+    const cellCenterX = cell.x + cell.width / 2;
+    const cellCenterY = cell.y + cell.height / 2;
+
+    // Check if cell center is within image bounds
+    if (
+      cellCenterX < imageBounds.x ||
+      cellCenterX > imageBounds.x + imageBounds.width ||
+      cellCenterY < imageBounds.y ||
+      cellCenterY > imageBounds.y + imageBounds.height
+    ) {
+      return null; // Cell is outside image
+    }
+
+    // Map canvas coordinates to image pixel coordinates
+    const imageX = ((cellCenterX - imageBounds.x) / imageBounds.width) * imageDimensionsRef.current.width;
+    const imageY = ((cellCenterY - imageBounds.y) / imageBounds.height) * imageDimensionsRef.current.height;
+
+    // Sample the pixel color
+    return samplePixel(imageDataRef.current, imageX, imageY);
+  };
+
+  // Load inserted image and extract pixel data
+  useEffect(() => {
+    if (insertedImage) {
+      const img = new Image();
+      img.onload = () => {
+        setLoadedImage(img);
+
+        // Create offscreen canvas to extract pixel data
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = img.width;
+        offscreenCanvas.height = img.height;
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+
+        if (offscreenCtx) {
+          // Fill with white background first (for transparent pixels)
+          offscreenCtx.fillStyle = '#ffffff';
+          offscreenCtx.fillRect(0, 0, img.width, img.height);
+
+          // Draw image on top of white background
+          offscreenCtx.drawImage(img, 0, 0);
+
+          // Extract pixel data
+          const imageData = offscreenCtx.getImageData(0, 0, img.width, img.height);
+          imageDataRef.current = imageData;
+          imageDimensionsRef.current = { width: img.width, height: img.height };
+        }
+      };
+      img.src = insertedImage;
+    } else {
+      setLoadedImage(null);
+      imageDataRef.current = null;
+      imageDimensionsRef.current = null;
+    }
+  }, [insertedImage]);
 
   // Calculate canvas size based on container
   useEffect(() => {
@@ -201,6 +294,38 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
       const baseCells = getBaseCells();
 
+      // Calculate image bounds for cell coloring (used in normal mode)
+      let imageBounds: { x: number; y: number; width: number; height: number } | null = null;
+      if (loadedImage && !debugMode) {
+        const padding = 60;
+        const availableWidth = canvasSize.width - (2 * padding);
+        const availableHeight = canvasSize.height - (2 * padding);
+
+        const imageAspect = loadedImage.width / loadedImage.height;
+        const availableAspect = availableWidth / availableHeight;
+
+        let baseWidth: number;
+        let baseHeight: number;
+
+        if (imageAspect > availableAspect) {
+          baseWidth = availableWidth;
+          baseHeight = availableWidth / imageAspect;
+        } else {
+          baseHeight = availableHeight;
+          baseWidth = availableHeight * imageAspect;
+        }
+
+        const drawWidth = baseWidth * imageScale;
+        const drawHeight = baseHeight * imageScale;
+
+        imageBounds = {
+          x: (canvasSize.width - drawWidth) / 2,
+          y: (canvasSize.height - drawHeight) / 2,
+          width: drawWidth,
+          height: drawHeight,
+        };
+      }
+
       // Update densities and render
       const newDensities = new Map(cellDensities);
 
@@ -237,8 +362,11 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
               const heatColor = densityToHeatColor(newDensity);
               drawCell(ctx, subCell, heatColor, '#808080', subdivisionLevel);
             } else {
-              // Normal mode: white cells with progressively lighter borders
-              drawCell(ctx, subCell, '#ffffff', undefined, subdivisionLevel);
+              // Normal mode: color by image pixel or white, with transparent borders
+              const imageColor = getCellColor(subCell, imageBounds);
+              const fillColor = imageColor || '#ffffff';
+              const borderColor = calculateImageBorderColor(subdivisionLevel);
+              drawCell(ctx, subCell, fillColor, borderColor, subdivisionLevel);
             }
           });
         } else {
@@ -248,13 +376,54 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             const heatColor = densityToHeatColor(newDensity);
             drawCell(ctx, baseCell, heatColor, '#808080', 0);
           } else {
-            drawCell(ctx, baseCell, '#ffffff', undefined, 0);
+            // Normal mode: color by image pixel or white, with transparent borders
+            const imageColor = getCellColor(baseCell, imageBounds);
+            const fillColor = imageColor || '#ffffff';
+            const borderColor = calculateImageBorderColor(0);
+            drawCell(ctx, baseCell, fillColor, borderColor, 0);
           }
         }
       });
 
       // Update state with new densities
       setCellDensities(newDensities);
+
+      // Draw inserted image (debug mode only)
+      if (debugMode && loadedImage) {
+        const padding = 60;
+        const availableWidth = canvasSize.width - (2 * padding);
+        const availableHeight = canvasSize.height - (2 * padding);
+
+        // Calculate scaling to fit within available space while maintaining aspect ratio
+        const imageAspect = loadedImage.width / loadedImage.height;
+        const availableAspect = availableWidth / availableHeight;
+
+        let baseWidth: number;
+        let baseHeight: number;
+
+        if (imageAspect > availableAspect) {
+          // Image is wider than available space - fit to width
+          baseWidth = availableWidth;
+          baseHeight = availableWidth / imageAspect;
+        } else {
+          // Image is taller than available space - fit to height
+          baseHeight = availableHeight;
+          baseWidth = availableHeight * imageAspect;
+        }
+
+        // Apply scale from center
+        const drawWidth = baseWidth * imageScale;
+        const drawHeight = baseHeight * imageScale;
+
+        // Center the image (always centered regardless of scale)
+        const drawX = (canvasSize.width - drawWidth) / 2;
+        const drawY = (canvasSize.height - drawHeight) / 2;
+
+        // Draw with opacity
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(loadedImage, drawX, drawY, drawWidth, drawHeight);
+        ctx.globalAlpha = 1.0;
+      }
 
       // Draw mouse cursor position (debug)
       if (debugMode && mousePos) {
@@ -282,7 +451,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities, cursorVelocity]);
+  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities, cursorVelocity, loadedImage, imageScale]);
 
   return (
     <div

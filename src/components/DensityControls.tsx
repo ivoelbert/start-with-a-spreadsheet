@@ -11,11 +11,15 @@ import type { DensityConfig } from '../types/spreadsheet';
 interface DensityControlsProps {
   config: DensityConfig;
   onChange: (config: Partial<DensityConfig>) => void;
+  imageScale: number;
+  onImageScaleChange: (scale: number) => void;
 }
 
 export const DensityControls: React.FC<DensityControlsProps> = ({
   config,
   onChange,
+  imageScale,
+  onImageScaleChange,
 }) => {
   return (
     <GroupBox label="Density Controls" style={{ marginBottom: '10px' }}>
@@ -168,6 +172,43 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
           </div>
           <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
             Faster cursor = stronger painting
+          </div>
+        </div>
+
+        {/* Image Scale */}
+        <div style={{ marginBottom: '10px' }}>
+          <label
+            htmlFor="image-scale"
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              fontSize: '11px',
+            }}
+          >
+            Image Scale: {imageScale.toFixed(2)}x
+          </label>
+          <input
+            id="image-scale"
+            type="range"
+            min="0"
+            max="2"
+            step="0.05"
+            value={imageScale}
+            onChange={(e) =>
+              onImageScaleChange(parseFloat(e.target.value))
+            }
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '9px',
+              color: '#666',
+            }}
+          >
+            <span>0x</span>
+            <span>2x</span>
           </div>
         </div>
       </div>

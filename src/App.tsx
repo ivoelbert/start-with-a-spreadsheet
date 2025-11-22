@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Window,
   WindowHeader,
@@ -44,7 +44,14 @@ export function App() {
   const [debugMode, setDebugMode] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
+  const [showInsertMenu, setShowInsertMenu] = useState(false);
+  const [insertedImage, setInsertedImage] = useState<string | null>(null);
+  const [imageScale, setImageScale] = useState(1);
   const viewButtonRef = useRef<HTMLButtonElement>(null);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+  const insertButtonRef = useRef<HTMLButtonElement>(null);
+  const insertMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [densityConfig, setDensityConfig] = useState<DensityConfig>(() => {
     const defaultConfig = createDefaultDensityConfig();
     return {
@@ -60,10 +67,66 @@ export function App() {
     setDensityConfig((prev) => ({ ...prev, ...changes }));
   };
 
+  const handleImageInsert = () => {
+    setShowInsertMenu(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result;
+        if (typeof result === 'string') {
+          setInsertedImage(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      // Check View menu
+      if (showViewMenu) {
+        const clickedButton = viewButtonRef.current?.contains(target);
+        const clickedMenu = viewMenuRef.current?.contains(target);
+        if (!clickedButton && !clickedMenu) {
+          setShowViewMenu(false);
+        }
+      }
+
+      // Check Insert menu
+      if (showInsertMenu) {
+        const clickedButton = insertButtonRef.current?.contains(target);
+        const clickedMenu = insertMenuRef.current?.contains(target);
+        if (!clickedButton && !clickedMenu) {
+          setShowInsertMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showViewMenu, showInsertMenu]);
+
   return (
     <div>
       <GlobalStyles />
       <ThemeProvider theme={original}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
         <div className="app-container">
           <Window className="window">
             <WindowHeader>Microsoft Excel - Density Spreadsheet Demo</WindowHeader>
@@ -82,6 +145,7 @@ export function App() {
                   </Button>
                   {showViewMenu && (
                     <div
+                      ref={viewMenuRef}
                       style={{
                         position: 'absolute',
                         top: '100%',
@@ -118,6 +182,45 @@ export function App() {
                     </div>
                   )}
                 </div>
+                <div style={{ position: 'relative' }}>
+                  <Button
+                    ref={insertButtonRef}
+                    variant="thin"
+                    size="sm"
+                    onClick={() => setShowInsertMenu(!showInsertMenu)}
+                    active={showInsertMenu}
+                  >
+                    Insert
+                  </Button>
+                  {showInsertMenu && (
+                    <div
+                      ref={insertMenuRef}
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        zIndex: 1000,
+                      }}
+                    >
+                      <MenuList style={{ minWidth: '150px' }}>
+                        <MenuListItem
+                          size="sm"
+                          onClick={handleImageInsert}
+                          style={{ position: 'relative', paddingLeft: '24px' }}
+                        >
+                          Image
+                        </MenuListItem>
+                        <MenuListItem
+                          size="sm"
+                          onClick={() => setShowInsertMenu(false)}
+                          style={{ position: 'relative', paddingLeft: '24px' }}
+                        >
+                          Video
+                        </MenuListItem>
+                      </MenuList>
+                    </div>
+                  )}
+                </div>
               </Toolbar>
 
               <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -133,6 +236,8 @@ export function App() {
                     <DensityControls
                       config={densityConfig}
                       onChange={handleConfigChange}
+                      imageScale={imageScale}
+                      onImageScaleChange={setImageScale}
                     />
                   </div>
                 )}
@@ -140,6 +245,8 @@ export function App() {
                   <DensitySpreadsheet
                     debugMode={debugMode}
                     densityConfig={densityConfig}
+                    insertedImage={insertedImage}
+                    imageScale={imageScale}
                   />
                 </div>
               </div>

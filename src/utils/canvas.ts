@@ -21,6 +21,22 @@ function calculateBorderColor(subdivisionLevel: number, maxLevel: number = 8): s
 }
 
 /**
+ * Calculate border color with transparency for image cells
+ * Higher subdivision = more transparent borders
+ * Level 0 = rgba(128, 128, 128, 0.3), Level 8 = rgba(128, 128, 128, 0.05)
+ */
+export function calculateImageBorderColor(subdivisionLevel: number, maxLevel: number = 8): string {
+  // Start with 30% opacity, fade to 5% opacity at max subdivision
+  const baseAlpha = 0.3;
+  const minAlpha = 0.05;
+
+  const normalizedLevel = Math.min(subdivisionLevel / maxLevel, 1.0);
+  const alpha = baseAlpha - (baseAlpha - minAlpha) * normalizedLevel;
+
+  return `rgba(128, 128, 128, ${alpha.toFixed(3)})`;
+}
+
+/**
  * Draw a single cell on the canvas with Excel-like styling
  * Border gets progressively lighter with subdivision level
  */
