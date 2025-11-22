@@ -95,7 +95,7 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
         </div>
 
         {/* Influence Radius */}
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <label
             htmlFor="influence-radius"
             style={{
@@ -128,6 +128,46 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
           >
             <span>Small</span>
             <span>Large</span>
+          </div>
+        </div>
+
+        {/* Velocity Influence */}
+        <div style={{ marginBottom: '10px' }}>
+          <label
+            htmlFor="velocity-influence"
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              fontSize: '11px',
+            }}
+          >
+            Speed Boost: {(config.velocityInfluence * 100).toFixed(0)}%
+          </label>
+          <input
+            id="velocity-influence"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={config.velocityInfluence}
+            onChange={(e) =>
+              onChange({ velocityInfluence: parseFloat(e.target.value) })
+            }
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '9px',
+              color: '#666',
+            }}
+          >
+            <span>Off</span>
+            <span>Max (10x)</span>
+          </div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
+            Faster cursor = stronger painting
           </div>
         </div>
       </div>

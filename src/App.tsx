@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Window,
   WindowHeader,
   WindowContent,
   Toolbar,
   Button,
+  MenuList,
+  MenuListItem,
+  Separator,
   styleReset,
 } from "react95";
 import { createGlobalStyle, ThemeProvider } from "styled-components";
@@ -14,6 +17,7 @@ import ms_sans_serif_bold from "react95/dist/fonts/ms_sans_serif_bold.woff2";
 import "./styles.css";
 import { DensitySpreadsheet } from "./components/DensitySpreadsheet";
 import { DensityControls } from "./components/DensityControls";
+import { Checkmark } from "./components/Checkmark";
 import { createDefaultDensityConfig } from "./utils/density";
 import type { DensityConfig } from "./types/spreadsheet";
 
@@ -39,9 +43,18 @@ const GlobalStyles = createGlobalStyle`
 export function App() {
   const [debugMode, setDebugMode] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [densityConfig, setDensityConfig] = useState<DensityConfig>(
-    createDefaultDensityConfig()
-  );
+  const [showViewMenu, setShowViewMenu] = useState(false);
+  const viewButtonRef = useRef<HTMLButtonElement>(null);
+  const [densityConfig, setDensityConfig] = useState<DensityConfig>(() => {
+    const defaultConfig = createDefaultDensityConfig();
+    return {
+      ...defaultConfig,
+      increaseMultiplier: 0.9, // Start at 0.9x build speed
+      decayMultiplier: 0.9, // Start at 0.9x fade speed
+      influenceRadius: 300, // Start at 300px brush size
+      velocityInfluence: 0.75, // Start at 75% speed boost
+    };
+  });
 
   const handleConfigChange = (changes: Partial<DensityConfig>) => {
     setDensityConfig((prev) => ({ ...prev, ...changes }));
@@ -56,26 +69,54 @@ export function App() {
             <WindowHeader>Microsoft Excel - Density Spreadsheet Demo</WindowHeader>
             <WindowContent className="window-content">
               <Toolbar className="toolbar">
-                <Button size="sm">File</Button>
-                <Button size="sm">Edit</Button>
-                <Button size="sm">View</Button>
-                <Button size="sm">Insert</Button>
-                <Button size="sm">Format</Button>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+                <Button variant="thin" size="sm">File</Button>
+                <div style={{ position: 'relative' }}>
                   <Button
+                    ref={viewButtonRef}
+                    variant="thin"
                     size="sm"
-                    onClick={() => setShowControls(!showControls)}
-                    active={showControls}
+                    onClick={() => setShowViewMenu(!showViewMenu)}
+                    active={showViewMenu}
                   >
-                    Controls
+                    View
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setDebugMode(!debugMode)}
-                    active={debugMode}
-                  >
-                    Debug
-                  </Button>
+                  {showViewMenu && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        zIndex: 1000,
+                      }}
+                    >
+                      <MenuList style={{ minWidth: '150px' }}>
+                        <MenuListItem
+                          size="sm"
+                          onClick={() => setShowControls(!showControls)}
+                          style={{ position: 'relative', paddingLeft: '24px' }}
+                        >
+                          {showControls && (
+                            <span style={{ position: 'absolute', left: '6px', top: '50%', transform: 'translateY(-50%)' }}>
+                              <Checkmark />
+                            </span>
+                          )}
+                          Controls
+                        </MenuListItem>
+                        <MenuListItem
+                          size="sm"
+                          onClick={() => setDebugMode(!debugMode)}
+                          style={{ position: 'relative', paddingLeft: '24px' }}
+                        >
+                          {debugMode && (
+                            <span style={{ position: 'absolute', left: '6px', top: '50%', transform: 'translateY(-50%)' }}>
+                              <Checkmark />
+                            </span>
+                          )}
+                          Debug
+                        </MenuListItem>
+                      </MenuList>
+                    </div>
+                  )}
                 </div>
               </Toolbar>
 

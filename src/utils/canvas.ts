@@ -5,20 +5,39 @@
 import type { CellBounds } from '../types/spreadsheet';
 
 /**
+ * Calculate border color that gets lighter with subdivision level
+ * Level 0 = #d0d0d0 (base), Level 8 = #f0f0f0 (very light)
+ */
+function calculateBorderColor(subdivisionLevel: number, maxLevel: number = 8): string {
+  // Base color: rgb(208, 208, 208) = #d0d0d0
+  // Max color: rgb(245, 245, 245) = #f5f5f5
+  const baseValue = 208;
+  const maxValue = 245;
+
+  const normalizedLevel = Math.min(subdivisionLevel / maxLevel, 1.0);
+  const colorValue = Math.floor(baseValue + (maxValue - baseValue) * normalizedLevel);
+
+  return `rgb(${colorValue}, ${colorValue}, ${colorValue})`;
+}
+
+/**
  * Draw a single cell on the canvas with Excel-like styling
+ * Border gets progressively lighter with subdivision level
  */
 export function drawCell(
   ctx: CanvasRenderingContext2D,
   cell: CellBounds,
   fillColor: string = '#ffffff',
-  strokeColor: string = '#d0d0d0'
+  strokeColor?: string,
+  subdivisionLevel: number = 0
 ): void {
   // Fill
   ctx.fillStyle = fillColor;
   ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
 
-  // Stroke (border) - lighter, thinner Excel-style borders
-  ctx.strokeStyle = strokeColor;
+  // Stroke (border) - gets lighter with subdivision
+  const borderColor = strokeColor || calculateBorderColor(subdivisionLevel);
+  ctx.strokeStyle = borderColor;
   ctx.lineWidth = 0.5;
   ctx.strokeRect(cell.x + 0.25, cell.y + 0.25, cell.width - 0.5, cell.height - 0.5);
 }

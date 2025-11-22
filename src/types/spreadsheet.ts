@@ -44,4 +44,5 @@ export interface DensityConfig {
   influenceRadius: number; // Radius of cursor influence in pixels
   increaseMultiplier: number; // User-adjustable multiplier for increase rate
   decayMultiplier: number; // User-adjustable multiplier for decay rate
+  velocityInfluence: number; // How much velocity affects build speed (0.0 to 1.0)
 }

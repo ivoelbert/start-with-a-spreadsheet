@@ -28,11 +28,11 @@ body {
   flex-shrink: 0;
 }
 
-.toolbar button {
+/* .toolbar button {
   font-size: 12px !important;
   padding: 3px 10px !important;
   height: 26px !important;
-}
+} */
 
 .spreadsheet-container {
   flex: 1;

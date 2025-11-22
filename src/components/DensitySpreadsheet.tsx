@@ -58,8 +58,11 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [cellDensities, setCellDensities] = useState<Map<string, number>>(new Map());
+  const [cursorVelocity, setCursorVelocity] = useState<number>(0);
   const animationFrameRef = useRef<number>();
   const lastFrameTimeRef = useRef<number>(performance.now());
+  const lastMousePosRef = useRef<Point | null>(null);
+  const lastMouseMoveTimeRef = useRef<number>(performance.now());
 
   // Merge default configs with overrides
   const config: GridConfig = { ...DEFAULT_CONFIG, ...configOverride };
@@ -123,15 +126,35 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    setMousePos({
+    const newPos = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-    });
+    };
+
+    const now = performance.now();
+
+    // Calculate velocity if we have a previous position
+    if (lastMousePosRef.current) {
+      const distance = calculateDistance(newPos, lastMousePosRef.current);
+      const deltaTime = (now - lastMouseMoveTimeRef.current) / 1000;
+
+      // Velocity in pixels per second
+      const velocity = deltaTime > 0 ? distance / deltaTime : 0;
+
+      // Smooth velocity with exponential moving average
+      setCursorVelocity((prev) => prev * 0.7 + velocity * 0.3);
+    }
+
+    lastMousePosRef.current = newPos;
+    lastMouseMoveTimeRef.current = now;
+    setMousePos(newPos);
   };
 
   // Handle mouse leave
   const handleMouseLeave = () => {
     setMousePos(null);
+    setCursorVelocity(0);
+    lastMousePosRef.current = null;
   };
 
   // Continuous render loop with density updates
@@ -157,6 +180,13 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
       // Cap delta time to prevent huge jumps (e.g., when tab is inactive)
       const cappedDeltaTime = Math.min(deltaTime, 0.1);
+
+      // Decay velocity if mouse hasn't moved recently (> 50ms)
+      const timeSinceMouseMove = (currentTime - lastMouseMoveTimeRef.current) / 1000;
+      if (timeSinceMouseMove > 0.05) {
+        // Very rapidly decay velocity when mouse is still
+        setCursorVelocity((prev) => Math.max(0, prev * 0.7));
+      }
 
       // Clear canvas
       clearCanvas(ctx, canvasSize.width, canvasSize.height);
@@ -184,7 +214,8 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           baseCell,
           mousePos,
           cappedDeltaTime,
-          densityConfig
+          densityConfig,
+          cursorVelocity
         );
 
         newDensities.set(cellKey, newDensity);
@@ -204,10 +235,10 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             if (debugMode) {
               // Debug mode: color by density (heat map)
               const heatColor = densityToHeatColor(newDensity);
-              drawCell(ctx, subCell, heatColor, '#808080');
+              drawCell(ctx, subCell, heatColor, '#808080', subdivisionLevel);
             } else {
-              // Normal mode: white cells with light borders
-              drawCell(ctx, subCell, '#ffffff', '#d0d0d0');
+              // Normal mode: white cells with progressively lighter borders
+              drawCell(ctx, subCell, '#ffffff', undefined, subdivisionLevel);
             }
           });
         } else {
@@ -215,9 +246,9 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           if (debugMode) {
             // Debug mode: color by density (heat map)
             const heatColor = densityToHeatColor(newDensity);
-            drawCell(ctx, baseCell, heatColor, '#808080');
+            drawCell(ctx, baseCell, heatColor, '#808080', 0);
           } else {
-            drawCell(ctx, baseCell, '#ffffff', '#d0d0d0');
+            drawCell(ctx, baseCell, '#ffffff', undefined, 0);
           }
         }
       });
@@ -251,7 +282,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities]);
+  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities, cursorVelocity]);
 
   return (
     <div

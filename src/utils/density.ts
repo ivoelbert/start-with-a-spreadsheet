@@ -8,10 +8,12 @@ import { calculateDistance, getCellCenter } from './subdivision';
 /**
  * Calculate the increase rate for a cell based on distance from cursor
  * Uses linear falloff: full rate at cursor, zero at radius edge
+ * Optionally boosted by cursor velocity
  */
 export function calculateIncreaseRate(
   distance: number,
-  config: DensityConfig
+  config: DensityConfig,
+  velocity: number = 0
 ): number {
   const { increaseRate, increaseMultiplier, influenceRadius } = config;
 
@@ -22,7 +24,14 @@ export function calculateIncreaseRate(
 
   // Linear falloff from full rate at center to zero at edge
   const falloff = 1 - distance / influenceRadius;
-  return increaseRate * increaseMultiplier * falloff;
+
+  // Apply velocity multiplier
+  const velocityMultiplier = calculateVelocityMultiplier(
+    velocity,
+    config.velocityInfluence
+  );
+
+  return increaseRate * increaseMultiplier * falloff * velocityMultiplier;
 }
 
 /**
@@ -34,7 +43,8 @@ export function updateCellDensity(
   cell: CellBounds,
   cursorPos: Point | null,
   deltaTime: number,
-  config: DensityConfig
+  config: DensityConfig,
+  cursorVelocity: number = 0
 ): number {
   let newDensity = currentDensity;
 
@@ -42,7 +52,7 @@ export function updateCellDensity(
   if (cursorPos) {
     const cellCenter = getCellCenter(cell);
     const distance = calculateDistance(cursorPos, cellCenter);
-    const increaseRate = calculateIncreaseRate(distance, config);
+    const increaseRate = calculateIncreaseRate(distance, config, cursorVelocity);
 
     // Increase is per-second, so multiply by deltaTime
     newDensity += increaseRate * deltaTime;
@@ -94,6 +104,33 @@ export function densityToHeatColor(density: number): string {
 }
 
 /**
+ * Calculate velocity multiplier based on cursor speed
+ * velocity: pixels per second
+ * Returns multiplier from 1.0 (slow) to 10.0 (fast)
+ * Uses cubic curve for dramatic boost only at high speeds
+ */
+export function calculateVelocityMultiplier(
+  velocity: number,
+  velocityInfluence: number
+): number {
+  if (velocityInfluence === 0) {
+    return 1.0; // No velocity influence
+  }
+
+  // High threshold: 1000 px/s is considered "very fast"
+  const maxVelocity = 1000;
+  const normalizedVelocity = Math.min(velocity / maxVelocity, 1.0);
+
+  // Apply cubic curve (x^3) for very steep boost at high speeds
+  const curvedVelocity = normalizedVelocity * normalizedVelocity * normalizedVelocity;
+
+  // Velocity adds 0% to 900% boost (1x to 10x) based on velocityInfluence
+  const boost = curvedVelocity * velocityInfluence * 9.0;
+
+  return 1.0 + boost;
+}
+
+/**
  * Create default density configuration
  * Target: 2.5 seconds to build max, 4 seconds to decay fully (at 60fps)
  */
@@ -109,8 +146,9 @@ export function createDefaultDensityConfig(): DensityConfig {
   return {
     increaseRate,
     decayRate,
-    influenceRadius: 500,
-    increaseMultiplier: 1.0,
-    decayMultiplier: 1.0,
+    influenceRadius: 500, // Medium brush by default
+    increaseMultiplier: 1.0, // Normal build speed by default
+    decayMultiplier: 1.0, // Normal fade by default
+    velocityInfluence: 0.5, // 50% by default - moderate velocity effect
   };
 }
