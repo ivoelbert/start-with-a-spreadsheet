@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Window,
   WindowHeader,
@@ -8,11 +8,11 @@ import {
   styleReset,
 } from "react95";
 import { createGlobalStyle, ThemeProvider } from "styled-components";
-
 import original from "react95/dist/themes/original";
 import ms_sans_serif from "react95/dist/fonts/ms_sans_serif.woff2";
 import ms_sans_serif_bold from "react95/dist/fonts/ms_sans_serif_bold.woff2";
 import "./styles.css";
+import { DensitySpreadsheet } from "./components/DensitySpreadsheet";
 
 const GlobalStyles = createGlobalStyle`
   ${styleReset}
@@ -34,13 +34,15 @@ const GlobalStyles = createGlobalStyle`
 `;
 
 export function App() {
+  const [debugMode, setDebugMode] = useState(false);
+
   return (
     <div>
       <GlobalStyles />
       <ThemeProvider theme={original}>
         <div className="app-container">
           <Window className="window">
-            <WindowHeader>Microsoft Excel - Classeur1</WindowHeader>
+            <WindowHeader>Microsoft Excel - Density Spreadsheet Demo</WindowHeader>
             <WindowContent className="window-content">
               <Toolbar className="toolbar">
                 <Button size="sm">File</Button>
@@ -48,32 +50,19 @@ export function App() {
                 <Button size="sm">View</Button>
                 <Button size="sm">Insert</Button>
                 <Button size="sm">Format</Button>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+                  <Button
+                    size="sm"
+                    onClick={() => setDebugMode(!debugMode)}
+                    active={debugMode}
+                  >
+                    Debug Mode
+                  </Button>
+                </div>
               </Toolbar>
 
               <div className="spreadsheet-container">
-                <div className="spreadsheet-grid">
-                  {/* Top-left corner cell */}
-                  <div className="cell-corner"></div>
-
-                  {/* Column headers (A-Z) */}
-                  {Array.from({ length: 26 }, (_, i) => (
-                    <div key={`col-${i}`} className="cell-header col-header">
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
-
-                  {/* Rows with row headers + data cells */}
-                  {Array.from({ length: 100 }, (_, rowIdx) => (
-                    <React.Fragment key={`row-${rowIdx}`}>
-                      <div className="cell-header row-header">
-                        {rowIdx + 1}
-                      </div>
-                      {Array.from({ length: 26 }, (_, colIdx) => (
-                        <div key={`${rowIdx}-${colIdx}`} className="cell-data"></div>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </div>
+                <DensitySpreadsheet debugMode={debugMode} />
               </div>
             </WindowContent>
           </Window>
