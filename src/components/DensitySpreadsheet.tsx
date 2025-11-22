@@ -10,6 +10,9 @@ import {
   calculateDistance,
   getCellCenter,
   subdivideCell,
+  getCellsAtEachLevel,
+  getSubdivisionLines,
+  type SubdivisionLine,
 } from '../utils/subdivision';
 import {
   clearCanvas,
@@ -329,6 +332,10 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
       // Update densities and render
       const newDensities = new Map(cellDensities);
 
+      // Collect all subdivision lines and final cells
+      const allSubdivisionLines: SubdivisionLine[] = [];
+      const finalCellsWithColors: Array<{ cell: CellBounds; imageColor: string | null }> = [];
+
       baseCells.forEach((baseCell) => {
         const cellKey = `${baseCell.baseX},${baseCell.baseY}`;
         const currentDensity = newDensities.get(cellKey) || 0;
@@ -353,22 +360,28 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
         // Subdivide cell if needed
         if (subdivisionLevel > 0) {
-          const subdivided = subdivideCell(baseCell, subdivisionLevel);
+          // Get cells at each subdivision level
+          const cellsByLevel = getCellsAtEachLevel(baseCell, subdivisionLevel);
 
-          // Draw all subdivided cells
-          subdivided.forEach((subCell) => {
-            if (debugMode) {
-              // Debug mode: color by density (heat map)
+          if (debugMode) {
+            // Debug mode: just draw final subdivided cells with heat map
+            const finalCells = subdivideCell(baseCell, subdivisionLevel);
+            finalCells.forEach((subCell) => {
               const heatColor = densityToHeatColor(newDensity);
               drawCell(ctx, subCell, heatColor, '#808080', subdivisionLevel);
-            } else {
-              // Normal mode: color by image pixel or white, with transparent borders
-              const imageColor = getCellColor(subCell, imageBounds);
-              const fillColor = imageColor || '#ffffff';
-              const borderColor = calculateImageBorderColor(subdivisionLevel);
-              drawCell(ctx, subCell, fillColor, borderColor, subdivisionLevel);
-            }
-          });
+            });
+          } else {
+            // Normal mode: collect subdivision lines and final cells
+            const lines = getSubdivisionLines(baseCell, subdivisionLevel);
+            allSubdivisionLines.push(...lines);
+
+            // Get final cells for filling with image colors
+            const finalCells = subdivideCell(baseCell, subdivisionLevel);
+            finalCells.forEach((cell) => {
+              const imageColor = getCellColor(cell, imageBounds);
+              finalCellsWithColors.push({ cell, imageColor });
+            });
+          }
         } else {
           // No subdivision - draw base cell
           if (debugMode) {
@@ -376,12 +389,49 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             const heatColor = densityToHeatColor(newDensity);
             drawCell(ctx, baseCell, heatColor, '#808080', 0);
           } else {
-            // Normal mode: base cells stay white (image only shows when subdivided)
+            // Normal mode: base cells stay white with base borders
             const borderColor = calculateImageBorderColor(0);
             drawCell(ctx, baseCell, '#ffffff', borderColor, 0);
           }
         }
+
       });
+
+      // Draw all collected subdivision lines and fill cells (normal mode only)
+      if (!debugMode) {
+        // First, fill the final cells with image colors
+        finalCellsWithColors.forEach(({ cell, imageColor }) => {
+          if (imageColor) {
+            ctx.fillStyle = imageColor;
+            ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+          }
+        });
+
+        // Then draw base cell borders (level 0)
+        baseCells.forEach((baseCell) => {
+          const borderColor = calculateImageBorderColor(0);
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(baseCell.x + 0.25, baseCell.y + 0.25, baseCell.width - 0.5, baseCell.height - 0.5);
+        });
+
+        // Finally draw subdivision lines, deduplicated by unique line key
+        const drawnLines = new Set<string>();
+        allSubdivisionLines.forEach((line) => {
+          const lineKey = `${line.x1.toFixed(2)},${line.y1.toFixed(2)},${line.x2.toFixed(2)},${line.y2.toFixed(2)}`;
+
+          if (!drawnLines.has(lineKey)) {
+            const lineColor = calculateImageBorderColor(line.level);
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(line.x1, line.y1);
+            ctx.lineTo(line.x2, line.y2);
+            ctx.stroke();
+            drawnLines.add(lineKey);
+          }
+        });
+      }
 
       // Update state with new densities
       setCellDensities(newDensities);

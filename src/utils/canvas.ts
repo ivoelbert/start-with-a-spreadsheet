@@ -23,14 +23,20 @@ function calculateBorderColor(subdivisionLevel: number, maxLevel: number = 8): s
 /**
  * Calculate border color with transparency for image cells
  * Higher subdivision = more transparent borders
- * Level 0 = rgba(128, 128, 128, 0.3), Level 8 = rgba(128, 128, 128, 0.05)
+ * Level 0 = rgba(128, 128, 128, 0.3), Level 6 = rgba(128, 128, 128, 0.05), Level 7-8 = transparent
  */
 export function calculateImageBorderColor(subdivisionLevel: number, maxLevel: number = 8): string {
-  // Start with 30% opacity, fade to 5% opacity at max subdivision
+  // Last two levels (7, 8) are completely transparent
+  if (subdivisionLevel >= maxLevel - 1) {
+    return `rgba(128, 128, 128, 0)`;
+  }
+
+  // Start with 30% opacity, fade to 5% opacity at level 6
   const baseAlpha = 0.3;
   const minAlpha = 0.05;
+  const fadeMaxLevel = maxLevel - 2; // Fade completes at level 6
 
-  const normalizedLevel = Math.min(subdivisionLevel / maxLevel, 1.0);
+  const normalizedLevel = Math.min(subdivisionLevel / fadeMaxLevel, 1.0);
   const alpha = baseAlpha - (baseAlpha - minAlpha) * normalizedLevel;
 
   return `rgba(128, 128, 128, ${alpha.toFixed(3)})`;

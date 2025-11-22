@@ -138,3 +138,112 @@ export function subdivideCell(
     ...subdivideCell(child2, targetLevel, nextLevel),
   ];
 }
+
+/**
+ * Get all cells at each subdivision level (for drawing nested grids)
+ * Returns a map of level -> cells at that level
+ */
+export function getCellsAtEachLevel(
+  cell: CellBounds,
+  targetLevel: number
+): Map<number, CellBounds[]> {
+  const levelMap = new Map<number, CellBounds[]>();
+
+  function subdivideRecursive(
+    currentCell: CellBounds,
+    currentLevel: number
+  ): void {
+    // Add current cell to its level
+    if (!levelMap.has(currentLevel)) {
+      levelMap.set(currentLevel, []);
+    }
+    levelMap.get(currentLevel)!.push(currentCell);
+
+    // Base case: reached target level
+    if (currentLevel >= targetLevel) {
+      return;
+    }
+
+    // Determine subdivision direction
+    const direction = getSubdivisionDirection(currentCell.width, currentCell.height);
+
+    // Subdivide once
+    const [child1, child2] = subdivideCellOnce(currentCell, direction);
+
+    // Recursively subdivide children
+    const nextLevel = currentLevel + 1;
+    subdivideRecursive(child1, nextLevel);
+    subdivideRecursive(child2, nextLevel);
+  }
+
+  subdivideRecursive(cell, 0);
+  return levelMap;
+}
+
+/**
+ * Represents a subdivision line
+ */
+export interface SubdivisionLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  level: number;
+}
+
+/**
+ * Get all subdivision lines created at each level
+ * Returns lines (not cells) that were added by each subdivision
+ */
+export function getSubdivisionLines(
+  cell: CellBounds,
+  targetLevel: number
+): SubdivisionLine[] {
+  const lines: SubdivisionLine[] = [];
+
+  function subdivideRecursive(
+    currentCell: CellBounds,
+    currentLevel: number
+  ): void {
+    // Base case: reached target level
+    if (currentLevel >= targetLevel) {
+      return;
+    }
+
+    // Determine subdivision direction
+    const direction = getSubdivisionDirection(currentCell.width, currentCell.height);
+
+    // Create the subdivision line at the next level
+    const nextLevel = currentLevel + 1;
+
+    if (direction === 'vertical') {
+      // Vertical line splits the cell in half horizontally
+      const midX = currentCell.x + currentCell.width / 2;
+      lines.push({
+        x1: midX,
+        y1: currentCell.y,
+        x2: midX,
+        y2: currentCell.y + currentCell.height,
+        level: nextLevel,
+      });
+    } else {
+      // Horizontal line splits the cell in half vertically
+      const midY = currentCell.y + currentCell.height / 2;
+      lines.push({
+        x1: currentCell.x,
+        y1: midY,
+        x2: currentCell.x + currentCell.width,
+        y2: midY,
+        level: nextLevel,
+      });
+    }
+
+    // Subdivide once and recurse on children
+    const [child1, child2] = subdivideCellOnce(currentCell, direction);
+    subdivideRecursive(child1, nextLevel);
+    subdivideRecursive(child2, nextLevel);
+  }
+
+  subdivideRecursive(cell, 0);
+  return lines;
+}
