@@ -45,4 +45,5 @@ export interface DensityConfig {
   increaseMultiplier: number; // User-adjustable multiplier for increase rate
   decayMultiplier: number; // User-adjustable multiplier for decay rate
   velocityInfluence: number; // How much velocity affects build speed (0.0 to 1.0)
+  interpolationDensity: number; // Density of interpolation points (0.5 to 5.0, higher = smoother)
 }

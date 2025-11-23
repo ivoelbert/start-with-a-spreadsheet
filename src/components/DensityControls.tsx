@@ -136,7 +136,7 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
         </div>
 
         {/* Velocity Influence */}
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <label
             htmlFor="velocity-influence"
             style={{
@@ -145,14 +145,14 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
               fontSize: '11px',
             }}
           >
-            Speed Boost: {(config.velocityInfluence * 100).toFixed(0)}%
+            Speed Boost: {config.velocityInfluence.toFixed(1)}x
           </label>
           <input
             id="velocity-influence"
             type="range"
-            min="0"
-            max="1"
-            step="0.05"
+            min="1"
+            max="15"
+            step="0.5"
             value={config.velocityInfluence}
             onChange={(e) =>
               onChange({ velocityInfluence: parseFloat(e.target.value) })
@@ -167,11 +167,51 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
               color: '#666',
             }}
           >
-            <span>Off</span>
-            <span>Max (10x)</span>
+            <span>1x (Off)</span>
+            <span>15x (Max)</span>
           </div>
           <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
             Faster cursor = stronger painting
+          </div>
+        </div>
+
+        {/* Interpolation Density */}
+        <div style={{ marginBottom: '15px' }}>
+          <label
+            htmlFor="interpolation-density"
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              fontSize: '11px',
+            }}
+          >
+            Paint Smoothness: {config.interpolationDensity.toFixed(1)}x
+          </label>
+          <input
+            id="interpolation-density"
+            type="range"
+            min="0.5"
+            max="10"
+            step="0.5"
+            value={config.interpolationDensity}
+            onChange={(e) =>
+              onChange({ interpolationDensity: parseFloat(e.target.value) })
+            }
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '9px',
+              color: '#666',
+            }}
+          >
+            <span>0.5x</span>
+            <span>10x</span>
+          </div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
+            Higher = smoother fast strokes
           </div>
         </div>
 

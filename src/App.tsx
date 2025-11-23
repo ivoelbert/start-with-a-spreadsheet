@@ -59,7 +59,7 @@ export function App() {
       increaseMultiplier: 0.9, // Start at 0.9x build speed
       decayMultiplier: 0.9, // Start at 0.9x fade speed
       influenceRadius: 300, // Start at 300px brush size
-      velocityInfluence: 0.75, // Start at 75% speed boost
+      // velocityInfluence and interpolationDensity use defaults from createDefaultDensityConfig (8.0x and 5.0x)
     };
   });
 

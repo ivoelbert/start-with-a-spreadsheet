@@ -29,6 +29,11 @@ import {
   densityToHeatColor,
   createDefaultDensityConfig,
 } from '../utils/density';
+import {
+  interpolatePoints,
+  type TimestampedPoint,
+  filterRecentPoints,
+} from '../utils/interpolation';
 
 interface DensitySpreadsheetProps {
   width?: number;
@@ -74,6 +79,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   const lastFrameTimeRef = useRef<number>(performance.now());
   const lastMousePosRef = useRef<Point | null>(null);
   const lastMouseMoveTimeRef = useRef<number>(performance.now());
+  const interpolatedPointsRef = useRef<TimestampedPoint[]>([]);
 
   // Merge default configs with overrides
   const config: GridConfig = { ...DEFAULT_CONFIG, ...configOverride };
@@ -229,7 +235,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
     const now = performance.now();
 
-    // Calculate velocity if we have a previous position
+    // Calculate velocity and interpolate if we have a previous position
     if (lastMousePosRef.current) {
       const distance = calculateDistance(newPos, lastMousePosRef.current);
       const deltaTime = (now - lastMouseMoveTimeRef.current) / 1000;
@@ -239,6 +245,34 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
       // Smooth velocity with exponential moving average
       setCursorVelocity((prev) => prev * 0.7 + velocity * 0.3);
+
+      // Calculate step size for interpolation based on influence radius and interpolation density
+      const stepSize = densityConfig.influenceRadius / (4 * densityConfig.interpolationDensity);
+
+      // Interpolate points between last and current position
+      const interpolated = interpolatePoints(lastMousePosRef.current, newPos, stepSize);
+
+      // Add interpolated points with timestamps
+      const timestampedPoints: TimestampedPoint[] = interpolated.map(p => ({
+        ...p,
+        timestamp: now,
+      }));
+
+      // Add to existing interpolated points
+      interpolatedPointsRef.current.push(...timestampedPoints);
+
+      // Filter out points older than 100ms to prevent memory buildup
+      interpolatedPointsRef.current = filterRecentPoints(
+        interpolatedPointsRef.current,
+        100, // 100ms max age
+        now
+      );
+    } else {
+      // First mouse event - just add current position
+      interpolatedPointsRef.current.push({
+        ...newPos,
+        timestamp: now,
+      });
     }
 
     lastMousePosRef.current = newPos;
@@ -251,6 +285,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
     setMousePos(null);
     setCursorVelocity(0);
     lastMousePosRef.current = null;
+    interpolatedPointsRef.current = []; // Clear interpolated points
   };
 
   // Continuous render loop with density updates
@@ -340,11 +375,15 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         const cellKey = `${baseCell.baseX},${baseCell.baseY}`;
         const currentDensity = newDensities.get(cellKey) || 0;
 
-        // Update density for this cell
+        // Get current interpolated points (filter again to ensure freshness)
+        const now = performance.now();
+        const activePoints = filterRecentPoints(interpolatedPointsRef.current, 100, now);
+
+        // Update density for this cell using all interpolated points
         const newDensity = updateCellDensity(
           currentDensity,
           baseCell,
-          mousePos,
+          activePoints, // Pass array of points instead of single point
           cappedDeltaTime,
           densityConfig,
           cursorVelocity

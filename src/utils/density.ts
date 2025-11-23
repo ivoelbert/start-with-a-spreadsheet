@@ -37,25 +37,43 @@ export function calculateIncreaseRate(
 /**
  * Update a cell's density value for one frame
  * Returns the new density value (clamped to [0, 1])
+ *
+ * @param currentDensity - Current density value of the cell
+ * @param cell - Cell bounds
+ * @param cursorPositions - Array of cursor positions (for interpolated paths)
+ * @param deltaTime - Time elapsed since last frame
+ * @param config - Density configuration
+ * @param cursorVelocity - Current cursor velocity
  */
 export function updateCellDensity(
   currentDensity: number,
   cell: CellBounds,
-  cursorPos: Point | null,
+  cursorPositions: Point[],
   deltaTime: number,
   config: DensityConfig,
   cursorVelocity: number = 0
 ): number {
   let newDensity = currentDensity;
 
-  // Apply increase if cursor is present and nearby
-  if (cursorPos) {
+  // Apply increase if cursor positions are present
+  if (cursorPositions.length > 0) {
     const cellCenter = getCellCenter(cell);
-    const distance = calculateDistance(cursorPos, cellCenter);
-    const increaseRate = calculateIncreaseRate(distance, config, cursorVelocity);
+
+    // Accumulate density from all cursor positions
+    // Each position contributes proportionally
+    let totalIncreaseRate = 0;
+
+    for (const cursorPos of cursorPositions) {
+      const distance = calculateDistance(cursorPos, cellCenter);
+      const increaseRate = calculateIncreaseRate(distance, config, cursorVelocity);
+      totalIncreaseRate += increaseRate;
+    }
+
+    // Average the increase rate to prevent over-accumulation
+    const avgIncreaseRate = totalIncreaseRate / cursorPositions.length;
 
     // Increase is per-second, so multiply by deltaTime
-    newDensity += increaseRate * deltaTime;
+    newDensity += avgIncreaseRate * deltaTime;
   }
 
   // Always apply global decay
@@ -106,15 +124,16 @@ export function densityToHeatColor(density: number): string {
 /**
  * Calculate velocity multiplier based on cursor speed
  * velocity: pixels per second
- * Returns multiplier from 1.0 (slow) to 10.0 (fast)
+ * velocityInfluence: direct multiplier (1x to 15x) applied at max speed
+ * Returns multiplier from 1.0 (slow) up to velocityInfluence (fast)
  * Uses cubic curve for dramatic boost only at high speeds
  */
 export function calculateVelocityMultiplier(
   velocity: number,
   velocityInfluence: number
 ): number {
-  if (velocityInfluence === 0) {
-    return 1.0; // No velocity influence
+  if (velocityInfluence <= 1.0) {
+    return 1.0; // No velocity boost
   }
 
   // High threshold: 1000 px/s is considered "very fast"
@@ -124,10 +143,9 @@ export function calculateVelocityMultiplier(
   // Apply cubic curve (x^3) for very steep boost at high speeds
   const curvedVelocity = normalizedVelocity * normalizedVelocity * normalizedVelocity;
 
-  // Velocity adds 0% to 900% boost (1x to 10x) based on velocityInfluence
-  const boost = curvedVelocity * velocityInfluence * 9.0;
-
-  return 1.0 + boost;
+  // Interpolate from 1.0 (no boost) to velocityInfluence (max boost)
+  // At 0 velocity: 1.0, at max velocity: velocityInfluence
+  return 1.0 + curvedVelocity * (velocityInfluence - 1.0);
 }
 
 /**
@@ -149,6 +167,7 @@ export function createDefaultDensityConfig(): DensityConfig {
     influenceRadius: 500, // Medium brush by default
     increaseMultiplier: 1.0, // Normal build speed by default
     decayMultiplier: 1.0, // Normal fade by default
-    velocityInfluence: 0.5, // 50% by default - moderate velocity effect
+    velocityInfluence: 8.0, // 8x by default - strong velocity effect
+    interpolationDensity: 5.0, // 5x default smoothness - very smooth strokes
   };
 }
