@@ -5,7 +5,7 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Point, GridConfig, CellBounds, SubdividedCell, DensityConfig } from '../types/spreadsheet';
+import type { Point, GridConfig, CellBounds, SubdividedCell, DensityConfig, CellDensityState } from '../types/spreadsheet';
 import {
   calculateDistance,
   getCellCenter,
@@ -70,7 +70,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
-  const [cellDensities, setCellDensities] = useState<Map<string, number>>(new Map());
+  const [cellDensities, setCellDensities] = useState<Map<string, CellDensityState>>(new Map());
   const [cursorVelocity, setCursorVelocity] = useState<number>(0);
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
@@ -373,23 +373,47 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
       baseCells.forEach((baseCell) => {
         const cellKey = `${baseCell.baseX},${baseCell.baseY}`;
-        const currentDensity = newDensities.get(cellKey) || 0;
+        const now = performance.now();
+
+        // Get current density state or initialize it
+        const currentState = newDensities.get(cellKey) || {
+          density: 0,
+          lastPaintedTime: now,
+        };
 
         // Get current interpolated points (filter again to ensure freshness)
-        const now = performance.now();
         const activePoints = filterRecentPoints(interpolatedPointsRef.current, 100, now);
+
+        // Check if cursor is actually painting THIS cell (within influence radius)
+        let isPaintingThisCell = false;
+        if (activePoints.length > 0) {
+          const cellCenter = getCellCenter(baseCell);
+          for (const point of activePoints) {
+            const distance = calculateDistance(point, cellCenter);
+            if (distance < densityConfig.influenceRadius) {
+              isPaintingThisCell = true;
+              break;
+            }
+          }
+        }
 
         // Update density for this cell using all interpolated points
         const newDensity = updateCellDensity(
-          currentDensity,
+          currentState.density,
           baseCell,
           activePoints, // Pass array of points instead of single point
           cappedDeltaTime,
           densityConfig,
-          cursorVelocity
+          cursorVelocity,
+          currentState.lastPaintedTime,
+          now
         );
 
-        newDensities.set(cellKey, newDensity);
+        // Update state - reset timestamp ONLY if cursor is actually painting this cell
+        newDensities.set(cellKey, {
+          density: newDensity,
+          lastPaintedTime: isPaintingThisCell ? now : currentState.lastPaintedTime,
+        });
 
         // Calculate subdivision level from density
         const subdivisionLevel = densityToSubdivisionLevel(

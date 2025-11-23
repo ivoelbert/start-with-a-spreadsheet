@@ -215,6 +215,86 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
           </div>
         </div>
 
+        {/* Hold Duration */}
+        <div style={{ marginBottom: '15px' }}>
+          <label
+            htmlFor="hold-duration"
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              fontSize: '11px',
+            }}
+          >
+            Hold Duration: {config.holdDuration.toFixed(1)}s
+          </label>
+          <input
+            id="hold-duration"
+            type="range"
+            min="0"
+            max="3"
+            step="0.1"
+            value={config.holdDuration}
+            onChange={(e) =>
+              onChange({ holdDuration: parseFloat(e.target.value) })
+            }
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '9px',
+              color: '#666',
+            }}
+          >
+            <span>Instant</span>
+            <span>3s</span>
+          </div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
+            How long painting holds before fading
+          </div>
+        </div>
+
+        {/* Decay Acceleration */}
+        <div style={{ marginBottom: '15px' }}>
+          <label
+            htmlFor="decay-acceleration"
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              fontSize: '11px',
+            }}
+          >
+            Decay Acceleration: {config.decayAcceleration.toFixed(1)}x
+          </label>
+          <input
+            id="decay-acceleration"
+            type="range"
+            min="0.5"
+            max="5"
+            step="0.1"
+            value={config.decayAcceleration}
+            onChange={(e) =>
+              onChange({ decayAcceleration: parseFloat(e.target.value) })
+            }
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '9px',
+              color: '#666',
+            }}
+          >
+            <span>Slow</span>
+            <span>Fast</span>
+          </div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
+            How quickly decay speeds up over time
+          </div>
+        </div>
+
         {/* Image Scale */}
         <div style={{ marginBottom: '10px' }}>
           <label

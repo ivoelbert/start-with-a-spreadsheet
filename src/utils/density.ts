@@ -35,6 +35,34 @@ export function calculateIncreaseRate(
 }
 
 /**
+ * Calculate time-based decay multiplier
+ * Returns 0 (no decay) during hold period, then ramps up exponentially
+ *
+ * @param timeSincePainted - Time in seconds since cell was last painted
+ * @param config - Density configuration
+ */
+export function calculateTimeBasedDecayMultiplier(
+  timeSincePainted: number,
+  config: DensityConfig
+): number {
+  const { holdDuration, decayAcceleration } = config;
+
+  // During hold period: no decay
+  if (timeSincePainted < holdDuration) {
+    return 0;
+  }
+
+  // After hold period: exponential ramp-up
+  const timeAfterHold = timeSincePainted - holdDuration;
+
+  // Exponential curve: 1 - exp(-x * acceleration)
+  // This creates smooth S-curve from 0 to 1
+  const rawMultiplier = 1 - Math.exp(-timeAfterHold * decayAcceleration / 2.0);
+
+  return rawMultiplier;
+}
+
+/**
  * Update a cell's density value for one frame
  * Returns the new density value (clamped to [0, 1])
  *
@@ -44,6 +72,8 @@ export function calculateIncreaseRate(
  * @param deltaTime - Time elapsed since last frame
  * @param config - Density configuration
  * @param cursorVelocity - Current cursor velocity
+ * @param lastPaintedTime - Timestamp when cell was last painted (milliseconds)
+ * @param currentTime - Current timestamp (milliseconds)
  */
 export function updateCellDensity(
   currentDensity: number,
@@ -51,7 +81,9 @@ export function updateCellDensity(
   cursorPositions: Point[],
   deltaTime: number,
   config: DensityConfig,
-  cursorVelocity: number = 0
+  cursorVelocity: number = 0,
+  lastPaintedTime: number,
+  currentTime: number
 ): number {
   let newDensity = currentDensity;
 
@@ -76,9 +108,13 @@ export function updateCellDensity(
     newDensity += avgIncreaseRate * deltaTime;
   }
 
-  // Always apply global decay
+  // Apply time-based decay
+  const timeSincePainted = (currentTime - lastPaintedTime) / 1000; // Convert to seconds
+  const timeBasedMultiplier = calculateTimeBasedDecayMultiplier(timeSincePainted, config);
+
   const { decayRate, decayMultiplier } = config;
-  newDensity -= decayRate * decayMultiplier * deltaTime;
+  const finalDecayRate = decayRate * decayMultiplier * timeBasedMultiplier;
+  newDensity -= finalDecayRate * deltaTime;
 
   // Clamp to [0, 1]
   return Math.max(0, Math.min(1, newDensity));
@@ -169,5 +205,7 @@ export function createDefaultDensityConfig(): DensityConfig {
     decayMultiplier: 1.0, // Normal fade by default
     velocityInfluence: 8.0, // 8x by default - strong velocity effect
     interpolationDensity: 5.0, // 5x default smoothness - very smooth strokes
+    holdDuration: 1.0, // Hold steady for 1 second before decay starts
+    decayAcceleration: 2.0, // Medium acceleration - smooth ramp-up
   };
 }

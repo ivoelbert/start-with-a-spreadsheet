@@ -46,4 +46,11 @@ export interface DensityConfig {
   decayMultiplier: number; // User-adjustable multiplier for decay rate
   velocityInfluence: number; // How much velocity affects build speed (0.0 to 1.0)
   interpolationDensity: number; // Density of interpolation points (0.5 to 5.0, higher = smoother)
+  holdDuration: number; // Time in seconds before decay starts (0 to 3 seconds)
+  decayAcceleration: number; // How quickly decay ramps up over time (0.5 to 5.0)
+}
+
+export interface CellDensityState {
+  density: number; // Current density value (0.0 to 1.0)
+  lastPaintedTime: number; // Timestamp when this cell was last painted (milliseconds)
 }
