@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { DesktopIcon } from "./DesktopIcon";
 import { AppBar } from "./AppBar";
 import { ExcelWindow } from "../excel/ExcelWindow";
-import excelLogo from "../../Excel-Logo-1995.png";
+import excelLogo from "../../Excel-Logo-1995-s.webp";
 
 interface DesktopProps {
   isExcelOpen: boolean;
@@ -15,6 +15,12 @@ export const Desktop: React.FC<DesktopProps> = ({
   onOpenExcel,
   onCloseExcel,
 }) => {
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+
+  const handleDesktopClick = () => {
+    setSelectedIcon(null);
+  };
+
   return (
     <div
       style={{
@@ -27,6 +33,7 @@ export const Desktop: React.FC<DesktopProps> = ({
     >
       {/* Desktop content area - fills remaining space */}
       <div
+        onClick={handleDesktopClick}
         style={{
           flex: 1,
           background: "rgb(0, 128, 128)",
@@ -43,7 +50,12 @@ export const Desktop: React.FC<DesktopProps> = ({
           <DesktopIcon
             icon={excelLogo}
             label="Microsoft Excel"
-            onDoubleClick={onOpenExcel}
+            isSelected={selectedIcon === "excel"}
+            onSelect={() => setSelectedIcon("excel")}
+            onDoubleClick={() => {
+              setSelectedIcon(null);
+              onOpenExcel();
+            }}
           />
         </div>
 
@@ -52,7 +64,7 @@ export const Desktop: React.FC<DesktopProps> = ({
       </div>
 
       {/* AppBar at bottom - natural flex child */}
-      <AppBar onOpenExcel={onOpenExcel} />
+      <AppBar onOpenExcel={onOpenExcel} isExcelOpen={isExcelOpen} />
     </div>
   );
 };
