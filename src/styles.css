@@ -1,5 +1,11 @@
 body {
   background: rgb(0, 128, 128);
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
+html {
+  overscroll-behavior: none;
 }
 
 .app-container {
@@ -27,12 +33,6 @@ body {
 .toolbar {
   flex-shrink: 0;
 }
-
-/* .toolbar button {
-  font-size: 12px !important;
-  padding: 3px 10px !important;
-  height: 26px !important;
-} */
 
 .spreadsheet-container {
   flex: 1;
@@ -80,4 +80,42 @@ body {
   border-bottom: 1px solid #c0c0c0;
   border-top: none;
   border-left: none;
+}
+
+.window-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.close-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: -1px;
+  margin-top: -1px;
+  transform: rotateZ(45deg);
+  position: relative;
+}
+
+.close-icon::before,
+.close-icon::after {
+  content: "";
+  position: absolute;
+  background: black;
+}
+
+.close-icon::before {
+  height: 100%;
+  width: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.close-icon::after {
+  height: 3px;
+  width: 100%;
+  left: 0px;
+  top: 50%;
+  transform: translateY(-50%);
 }

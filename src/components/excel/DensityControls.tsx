@@ -6,7 +6,7 @@
 
 import React from "react";
 import { GroupBox, Slider, Tooltip } from "react95";
-import type { Config } from "../types/spreadsheet";
+import type { Config } from "../../types/spreadsheet";
 
 interface DensityControlsProps {
   config: Config;

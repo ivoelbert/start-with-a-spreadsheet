@@ -5,7 +5,7 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Point, Config, CellBounds, SubdividedCell, CellDensityState } from '../types/spreadsheet';
+import type { Point, Config, CellBounds, SubdividedCell, CellDensityState } from '../../types/spreadsheet';
 import {
   calculateDistance,
   getCellCenter,
@@ -13,7 +13,7 @@ import {
   getCellsAtEachLevel,
   getSubdivisionLines,
   type SubdivisionLine,
-} from '../utils/subdivision';
+} from '../../utils/subdivision';
 import {
   clearCanvas,
   drawCell,
@@ -22,18 +22,18 @@ import {
   drawRowHeaders,
   drawCornerHeader,
   calculateImageBorderColor,
-} from '../utils/canvas';
+} from '../../utils/canvas';
 import {
   updateCellDensity,
   densityToSubdivisionLevel,
   densityToHeatColor,
   createDefaultConfig,
-} from '../utils/density';
+} from '../../utils/density';
 import {
   interpolatePoints,
   type TimestampedPoint,
   filterRecentPoints,
-} from '../utils/interpolation';
+} from '../../utils/interpolation';
 
 interface DensitySpreadsheetProps {
   width?: number;
