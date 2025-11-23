@@ -16,15 +16,23 @@ import type { Config } from "../../types/spreadsheet";
 
 interface ExcelWindowProps {
   onClose: () => void;
+  insertedImage: string | null;
+  imageScale: number;
+  onImageChange: (image: string | null) => void;
+  onImageScaleChange: (scale: number) => void;
 }
 
-export const ExcelWindow: React.FC<ExcelWindowProps> = ({ onClose }) => {
+export const ExcelWindow: React.FC<ExcelWindowProps> = ({
+  onClose,
+  insertedImage,
+  imageScale,
+  onImageChange,
+  onImageScaleChange,
+}) => {
   const [debugMode, setDebugMode] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [showInsertMenu, setShowInsertMenu] = useState(false);
-  const [insertedImage, setInsertedImage] = useState<string | null>(null);
-  const [imageScale, setImageScale] = useState(1);
   const viewButtonRef = useRef<HTMLButtonElement>(null);
   const viewMenuRef = useRef<HTMLDivElement>(null);
   const insertButtonRef = useRef<HTMLButtonElement>(null);
@@ -50,7 +58,7 @@ export const ExcelWindow: React.FC<ExcelWindowProps> = ({ onClose }) => {
       reader.onload = (e) => {
         const result = e.target?.result;
         if (typeof result === "string") {
-          setInsertedImage(result);
+          onImageChange(result);
         }
       };
       reader.readAsDataURL(file);
@@ -247,7 +255,7 @@ export const ExcelWindow: React.FC<ExcelWindowProps> = ({ onClose }) => {
                     config={densityConfig}
                     onChange={handleConfigChange}
                     imageScale={imageScale}
-                    onImageScaleChange={setImageScale}
+                    onImageScaleChange={onImageScaleChange}
                   />
                 </div>
               )}

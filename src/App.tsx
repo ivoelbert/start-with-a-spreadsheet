@@ -28,6 +28,8 @@ const GlobalStyles = createGlobalStyle`
 
 export function App() {
   const [isExcelOpen, setIsExcelOpen] = useState(false);
+  const [insertedImage, setInsertedImage] = useState<string | null>(null);
+  const [imageScale, setImageScale] = useState(1);
 
   return (
     <div>
@@ -37,6 +39,10 @@ export function App() {
           isExcelOpen={isExcelOpen}
           onOpenExcel={() => setIsExcelOpen(true)}
           onCloseExcel={() => setIsExcelOpen(false)}
+          insertedImage={insertedImage}
+          imageScale={imageScale}
+          onImageChange={setInsertedImage}
+          onImageScaleChange={setImageScale}
         />
       </ThemeProvider>
     </div>

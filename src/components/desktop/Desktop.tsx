@@ -8,12 +8,20 @@ interface DesktopProps {
   isExcelOpen: boolean;
   onOpenExcel: () => void;
   onCloseExcel: () => void;
+  insertedImage: string | null;
+  imageScale: number;
+  onImageChange: (image: string | null) => void;
+  onImageScaleChange: (scale: number) => void;
 }
 
 export const Desktop: React.FC<DesktopProps> = ({
   isExcelOpen,
   onOpenExcel,
   onCloseExcel,
+  insertedImage,
+  imageScale,
+  onImageChange,
+  onImageScaleChange,
 }) => {
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
 
@@ -60,7 +68,15 @@ export const Desktop: React.FC<DesktopProps> = ({
         </div>
 
         {/* Excel Window */}
-        {isExcelOpen && <ExcelWindow onClose={onCloseExcel} />}
+        {isExcelOpen && (
+          <ExcelWindow
+            onClose={onCloseExcel}
+            insertedImage={insertedImage}
+            imageScale={imageScale}
+            onImageChange={onImageChange}
+            onImageScaleChange={onImageScaleChange}
+          />
+        )}
       </div>
 
       {/* AppBar at bottom - natural flex child */}
