@@ -22,7 +22,7 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
   onImageScaleChange,
 }) => {
   return (
-    <GroupBox label="Density Controls" style={{ marginBottom: "10px" }}>
+    <GroupBox label="Controls" style={{ marginBottom: "10px" }}>
       <div style={{ padding: "10px" }}>
         {/* Increase Rate Multiplier */}
         <div style={{ marginBottom: "15px" }}>
