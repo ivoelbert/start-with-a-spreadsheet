@@ -5,7 +5,7 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Point, GridConfig, CellBounds, SubdividedCell, DensityConfig, CellDensityState } from '../types/spreadsheet';
+import type { Point, Config, CellBounds, SubdividedCell, CellDensityState } from '../types/spreadsheet';
 import {
   calculateDistance,
   getCellCenter,
@@ -27,7 +27,7 @@ import {
   updateCellDensity,
   densityToSubdivisionLevel,
   densityToHeatColor,
-  createDefaultDensityConfig,
+  createDefaultConfig,
 } from '../utils/density';
 import {
   interpolatePoints,
@@ -38,21 +38,11 @@ import {
 interface DensitySpreadsheetProps {
   width?: number;
   height?: number;
-  config?: Partial<GridConfig>;
-  densityConfig?: Partial<DensityConfig>;
+  config?: Partial<Config>;
   debugMode?: boolean;
   insertedImage?: string | null;
   imageScale?: number;
 }
-
-const DEFAULT_CONFIG: GridConfig = {
-  baseCellWidth: 80,
-  baseCellHeight: 24,
-  columns: 26,
-  rows: 30,
-  influenceRadius: 500,
-  maxSubdivisionLevel: 8,
-};
 
 const HEADER_WIDTH = 45;
 const HEADER_HEIGHT = 24;
@@ -61,7 +51,6 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   width,
   height,
   config: configOverride = {},
-  densityConfig: densityConfigOverride = {},
   debugMode = false,
   insertedImage = null,
   imageScale = 1,
@@ -81,12 +70,8 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
   const lastMouseMoveTimeRef = useRef<number>(performance.now());
   const interpolatedPointsRef = useRef<TimestampedPoint[]>([]);
 
-  // Merge default configs with overrides
-  const config: GridConfig = { ...DEFAULT_CONFIG, ...configOverride };
-  const densityConfig: DensityConfig = {
-    ...createDefaultDensityConfig(),
-    ...densityConfigOverride,
-  };
+  // Merge default config with overrides
+  const config: Config = { ...createDefaultConfig(), ...configOverride };
 
   // Helper function to sample pixel color from ImageData
   const samplePixel = (imageData: ImageData, x: number, y: number): string => {
@@ -247,7 +232,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
       setCursorVelocity((prev) => prev * 0.7 + velocity * 0.3);
 
       // Calculate step size for interpolation based on influence radius and interpolation density
-      const stepSize = densityConfig.influenceRadius / (4 * densityConfig.interpolationDensity);
+      const stepSize = config.influenceRadius / (4 * config.interpolationDensity);
 
       // Interpolate points between last and current position
       const interpolated = interpolatePoints(lastMousePosRef.current, newPos, stepSize);
@@ -390,7 +375,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           const cellCenter = getCellCenter(baseCell);
           for (const point of activePoints) {
             const distance = calculateDistance(point, cellCenter);
-            if (distance < densityConfig.influenceRadius) {
+            if (distance < config.influenceRadius) {
               isPaintingThisCell = true;
               break;
             }
@@ -403,7 +388,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           baseCell,
           activePoints, // Pass array of points instead of single point
           cappedDeltaTime,
-          densityConfig,
+          config,
           cursorVelocity,
           currentState.lastPaintedTime,
           now
@@ -441,7 +426,14 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             // Get final cells for filling with image colors
             const finalCells = subdivideCell(baseCell, subdivisionLevel);
             finalCells.forEach((cell) => {
-              const imageColor = getCellColor(cell, imageBounds);
+              // Convert CellBounds to SubdividedCell for getCellColor
+              const subdivCell: SubdividedCell = {
+                ...cell,
+                level: subdivisionLevel,
+                baseX: baseCell.baseX,
+                baseY: baseCell.baseY,
+              };
+              const imageColor = getCellColor(subdivCell, imageBounds);
               finalCellsWithColors.push({ cell, imageColor });
             });
           }
@@ -453,7 +445,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
             drawCell(ctx, baseCell, heatColor, '#808080', 0);
           } else {
             // Normal mode: base cells stay white with base borders
-            const borderColor = calculateImageBorderColor(0);
+            const borderColor = calculateImageBorderColor(0, config.maxSubdivisionLevel);
             drawCell(ctx, baseCell, '#ffffff', borderColor, 0);
           }
         }
@@ -472,7 +464,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
 
         // Then draw base cell borders (level 0)
         baseCells.forEach((baseCell) => {
-          const borderColor = calculateImageBorderColor(0);
+          const borderColor = calculateImageBorderColor(0, config.maxSubdivisionLevel);
           ctx.strokeStyle = borderColor;
           ctx.lineWidth = 0.5;
           ctx.strokeRect(baseCell.x + 0.25, baseCell.y + 0.25, baseCell.width - 0.5, baseCell.height - 0.5);
@@ -484,7 +476,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
           const lineKey = `${line.x1.toFixed(2)},${line.y1.toFixed(2)},${line.x2.toFixed(2)},${line.y2.toFixed(2)}`;
 
           if (!drawnLines.has(lineKey)) {
-            const lineColor = calculateImageBorderColor(line.level);
+            const lineColor = calculateImageBorderColor(line.level, config.maxSubdivisionLevel);
             ctx.strokeStyle = lineColor;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -547,7 +539,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(mousePos.x, mousePos.y, densityConfig.influenceRadius, 0, Math.PI * 2);
+        ctx.arc(mousePos.x, mousePos.y, config.influenceRadius, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -562,7 +554,7 @@ export const DensitySpreadsheet: React.FC<DensitySpreadsheetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mousePos, canvasSize.width, canvasSize.height, config, densityConfig, debugMode, cellDensities, cursorVelocity, loadedImage, imageScale]);
+  }, [mousePos, canvasSize.width, canvasSize.height, config, debugMode, cellDensities, cursorVelocity, loadedImage, imageScale]);
 
   return (
     <div

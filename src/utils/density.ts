@@ -2,7 +2,7 @@
  * Density calculation utilities for time-based density accumulation
  */
 
-import type { Point, CellBounds, DensityConfig } from '../types/spreadsheet';
+import type { Point, CellBounds, Config } from '../types/spreadsheet';
 import { calculateDistance, getCellCenter } from './subdivision';
 
 /**
@@ -12,7 +12,7 @@ import { calculateDistance, getCellCenter } from './subdivision';
  */
 export function calculateIncreaseRate(
   distance: number,
-  config: DensityConfig,
+  config: Config,
   velocity: number = 0
 ): number {
   const { increaseRate, increaseMultiplier, influenceRadius } = config;
@@ -43,7 +43,7 @@ export function calculateIncreaseRate(
  */
 export function calculateTimeBasedDecayMultiplier(
   timeSincePainted: number,
-  config: DensityConfig
+  config: Config
 ): number {
   const { holdDuration, decayAcceleration } = config;
 
@@ -80,7 +80,7 @@ export function updateCellDensity(
   cell: CellBounds,
   cursorPositions: Point[],
   deltaTime: number,
-  config: DensityConfig,
+  config: Config,
   cursorVelocity: number = 0,
   lastPaintedTime: number,
   currentTime: number
@@ -185,10 +185,10 @@ export function calculateVelocityMultiplier(
 }
 
 /**
- * Create default density configuration
+ * Create default configuration
  * Target: 2.5 seconds to build max, 4 seconds to decay fully (at 60fps)
  */
-export function createDefaultDensityConfig(): DensityConfig {
+export function createDefaultConfig(): Config {
   // At 60fps: 1.0 / (2.5 * 60) ≈ 0.00667 per frame
   // Convert to per-second: 0.00667 * 60 ≈ 0.4
   const increaseRate = 0.4; // per second
@@ -198,6 +198,13 @@ export function createDefaultDensityConfig(): DensityConfig {
   const decayRate = 0.25; // per second
 
   return {
+    // Grid properties
+    baseCellWidth: 80,
+    baseCellHeight: 24,
+    columns: 26,
+    rows: 30,
+
+    // Painting/density properties
     increaseRate,
     decayRate,
     influenceRadius: 200, // Small brush by default
@@ -207,5 +214,6 @@ export function createDefaultDensityConfig(): DensityConfig {
     interpolationDensity: 5.0, // 5x smoothness - very smooth strokes
     holdDuration: 1.5, // Hold steady for 1.5 seconds before decay starts
     decayAcceleration: 5.0, // Fast acceleration - quick drop-off after hold
+    maxSubdivisionLevel: 6, // Default max subdivision level
   };
 }

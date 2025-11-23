@@ -6,11 +6,11 @@
 
 import React from "react";
 import { GroupBox, Slider, Tooltip } from "react95";
-import type { DensityConfig } from "../types/spreadsheet";
+import type { Config } from "../types/spreadsheet";
 
 interface DensityControlsProps {
-  config: DensityConfig;
-  onChange: (config: Partial<DensityConfig>) => void;
+  config: Config;
+  onChange: (config: Partial<Config>) => void;
   imageScale: number;
   onImageScaleChange: (scale: number) => void;
 }
@@ -187,6 +187,28 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
             step={0.1}
             value={config.decayAcceleration}
             onChange={(value) => onChange({ decayAcceleration: value })}
+          />
+        </div>
+
+        {/* Max Subdivisions */}
+        <div style={{ marginBottom: "15px" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontSize: "11px",
+            }}
+          >
+            Max Subdivisions: {config.maxSubdivisionLevel}
+          </label>
+          <Slider
+            style={{ marginBottom: 0 }}
+            size="100%"
+            min={1}
+            max={12}
+            step={1}
+            value={config.maxSubdivisionLevel}
+            onChange={(value) => onChange({ maxSubdivisionLevel: value })}
           />
         </div>
 

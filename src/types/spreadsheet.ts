@@ -21,15 +21,6 @@ export interface SubdividedCell extends CellBounds {
   density?: number; // Accumulated density value (0.0 to 1.0)
 }
 
-export interface GridConfig {
-  baseCellWidth: number;
-  baseCellHeight: number;
-  columns: number;
-  rows: number;
-  influenceRadius: number;
-  maxSubdivisionLevel: number;
-}
-
 export type SubdivisionDirection = 'horizontal' | 'vertical';
 
 export interface SubdivisionParams {
@@ -38,16 +29,24 @@ export interface SubdivisionParams {
   maxLevel: number;
 }
 
-export interface DensityConfig {
+export interface Config {
+  // Grid properties
+  baseCellWidth: number;
+  baseCellHeight: number;
+  columns: number;
+  rows: number;
+
+  // Painting/density properties
   increaseRate: number; // Base density increase per second at cursor position
   decayRate: number; // Global density decay per second
   influenceRadius: number; // Radius of cursor influence in pixels
   increaseMultiplier: number; // User-adjustable multiplier for increase rate
   decayMultiplier: number; // User-adjustable multiplier for decay rate
-  velocityInfluence: number; // How much velocity affects build speed (0.0 to 1.0)
-  interpolationDensity: number; // Density of interpolation points (0.5 to 5.0, higher = smoother)
+  velocityInfluence: number; // How much velocity affects build speed (1.0 to 15.0)
+  interpolationDensity: number; // Density of interpolation points (0.5 to 10.0, higher = smoother)
   holdDuration: number; // Time in seconds before decay starts (0 to 3 seconds)
-  decayAcceleration: number; // How quickly decay ramps up over time (0.5 to 5.0)
+  decayAcceleration: number; // How quickly decay ramps up over time (0.5 to 10.0)
+  maxSubdivisionLevel: number; // Maximum subdivision level (1 to 12)
 }
 
 export interface CellDensityState {

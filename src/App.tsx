@@ -18,8 +18,8 @@ import "./styles.css";
 import { DensitySpreadsheet } from "./components/DensitySpreadsheet";
 import { DensityControls } from "./components/DensityControls";
 import { Checkmark } from "./components/Checkmark";
-import { createDefaultDensityConfig } from "./utils/density";
-import type { DensityConfig } from "./types/spreadsheet";
+import { createDefaultConfig } from "./utils/density";
+import type { Config } from "./types/spreadsheet";
 
 const GlobalStyles = createGlobalStyle`
   ${styleReset}
@@ -52,12 +52,12 @@ export function App() {
   const insertButtonRef = useRef<HTMLButtonElement>(null);
   const insertMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [densityConfig, setDensityConfig] = useState<DensityConfig>(() => {
-    // Use all defaults from createDefaultDensityConfig
-    return createDefaultDensityConfig();
+  const [densityConfig, setDensityConfig] = useState<Config>(() => {
+    // Use all defaults from createDefaultConfig
+    return createDefaultConfig();
   });
 
-  const handleConfigChange = (changes: Partial<DensityConfig>) => {
+  const handleConfigChange = (changes: Partial<Config>) => {
     setDensityConfig((prev) => ({ ...prev, ...changes }));
   };
 
@@ -238,7 +238,7 @@ export function App() {
                 <div className="spreadsheet-container" style={{ flex: 1 }}>
                   <DensitySpreadsheet
                     debugMode={debugMode}
-                    densityConfig={densityConfig}
+                    config={densityConfig}
                     insertedImage={insertedImage}
                     imageScale={imageScale}
                   />
