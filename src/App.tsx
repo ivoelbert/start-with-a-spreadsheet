@@ -53,14 +53,8 @@ export function App() {
   const insertMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [densityConfig, setDensityConfig] = useState<DensityConfig>(() => {
-    const defaultConfig = createDefaultDensityConfig();
-    return {
-      ...defaultConfig,
-      increaseMultiplier: 0.9, // Start at 0.9x build speed
-      decayMultiplier: 0.9, // Start at 0.9x fade speed
-      influenceRadius: 300, // Start at 300px brush size
-      // velocityInfluence and interpolationDensity use defaults from createDefaultDensityConfig (8.0x and 5.0x)
-    };
+    // Use all defaults from createDefaultDensityConfig
+    return createDefaultDensityConfig();
   });
 
   const handleConfigChange = (changes: Partial<DensityConfig>) => {

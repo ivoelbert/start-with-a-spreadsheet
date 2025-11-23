@@ -271,7 +271,7 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
             id="decay-acceleration"
             type="range"
             min="0.5"
-            max="5"
+            max="10"
             step="0.1"
             value={config.decayAcceleration}
             onChange={(e) =>
@@ -288,7 +288,7 @@ export const DensityControls: React.FC<DensityControlsProps> = ({
             }}
           >
             <span>Slow</span>
-            <span>Fast</span>
+            <span>Very Fast</span>
           </div>
           <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
             How quickly decay speeds up over time

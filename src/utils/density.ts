@@ -200,12 +200,12 @@ export function createDefaultDensityConfig(): DensityConfig {
   return {
     increaseRate,
     decayRate,
-    influenceRadius: 500, // Medium brush by default
-    increaseMultiplier: 1.0, // Normal build speed by default
-    decayMultiplier: 1.0, // Normal fade by default
-    velocityInfluence: 8.0, // 8x by default - strong velocity effect
-    interpolationDensity: 5.0, // 5x default smoothness - very smooth strokes
-    holdDuration: 1.0, // Hold steady for 1 second before decay starts
-    decayAcceleration: 2.0, // Medium acceleration - smooth ramp-up
+    influenceRadius: 200, // Small brush by default
+    increaseMultiplier: 0.8, // Slow build speed
+    decayMultiplier: 1.0, // Normal fade speed
+    velocityInfluence: 8.0, // 8x velocity boost
+    interpolationDensity: 5.0, // 5x smoothness - very smooth strokes
+    holdDuration: 1.5, // Hold steady for 1.5 seconds before decay starts
+    decayAcceleration: 5.0, // Fast acceleration - quick drop-off after hold
   };
 }
