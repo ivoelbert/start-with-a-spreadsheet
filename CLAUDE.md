@@ -4,6 +4,10 @@ globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
 
+## IMPORTANT: Do NOT run dev servers
+
+**NEVER run `bun run dev`, `bun run start`, or any development server commands unless explicitly asked by the user.** You cannot inspect the browser or verify that things work visually, so running the server is pointless and wastes the user's time.
+
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
